@@ -4,6 +4,7 @@ import recommenders as rec
 
 userInput = [
     # {'title': 'Mr. Nobody', 'rating': 5},
+    {'title': 'The Godfather', 'rating': 5},
     {'title': 'The Godfather: Part II', 'rating': 5},
     {'title': 'GoodFellas', 'rating': 5},
     {'title': 'The Departed', 'rating': 5}
@@ -21,10 +22,13 @@ user_titles = input_movies['title'].tolist()
 #
 # print(genre_recs['title'].tolist())
 
-# key_m = rec.keyword_recommender(['Mr. Nobody'], cosine_sim=rec.count_vectorizer())
-# print(key_m['title'].head())
+key_m = rec.keyword_recommender(user_titles, cosine_sim=rec.count_vectorizer())
+print(key_m['title'].head())
 keyword_movies = rec.keyword_recommender(user_titles)
+
 print(keyword_movies['title'].head())
 
-# genre_recs = rec.genre_recommender(input_movies, key_m)
+#genre_recs = rec.genre_recommender(input_movies, key_m)
 # print(genre_recs['title'].tolist())
+sorted_movies = rec.sort_by_rating(keyword_movies)
+print(sorted_movies[['title','score','keyword_scores']].head(10))
