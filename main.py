@@ -2,8 +2,8 @@ import pandas as pd
 import numpy as np
 import recommenders as rec
 
+# dummy input
 userInput = [
-    # {'title': 'Mr. Nobody', 'rating': 5},
     {'title': 'The Godfather', 'rating': 5},
     {'title': 'The Godfather: Part II', 'rating': 5},
     {'title': 'GoodFellas', 'rating': 5},
@@ -12,26 +12,18 @@ userInput = [
 input_movies = pd.DataFrame(userInput)
 user_titles = input_movies['title'].tolist()
 
-# keyword_movies = rec.keyword_recommender(user_titles)
-# # keyword_movies = movies[movies['title'].isin(recommended)]
-#
-# print(keyword_movies['title'].head())
-#
-# #movies = movies[movies['title'].isin(recommended)]
-# genre_recs = rec.genre_recommender(input_movies, keyword_movies)
-#
-# print(genre_recs['title'].tolist())
-
-key_m = rec.keyword_recommender(user_titles, cosine_sim=rec.count_vectorizer())
-print(key_m['title'].head())
+# make a keyword recommendation using sum of 2 cosine similarities
+# first cosine similarity: keywords extracted from movie overviews
+# second cosine similarity: keywords from imdb, genres, director name
 keyword_movies = rec.keyword_recommender(user_titles)
 
-print(keyword_movies['title'].head())
-
+# sort the recommendations based on one hot encoding for genres and user rating
+# genre_recs = rec.genre_recommender(input_movies, keyword_movies)
 genre_recs = rec.genre_recommender(input_movies, keyword_movies)
-genre_recs2 = rec.genre_recommender(input_movies, key_m)
-print(genre_recs['title'].tolist())
-sorted_movies = rec.sort_by_rating(genre_recs)
-print(sorted_movies[['title','score','vote_count','vote_average']].head(20))
-sorted_movies2 = rec.sort_by_rating(genre_recs2)
-print(sorted_movies2[['title','score','vote_count','vote_average']].head(20))
+
+# add column containing weighted ratings
+weighted_movies = rec.set_weighted_rating(genre_recs)
+
+# sort the movies by sum of weighted rating score + keywords score
+sorted_movies = rec.summed_rating(weighted_movies)[['title', 'score', 'keyword_scores', 'summed']]
+print(sorted_movies)

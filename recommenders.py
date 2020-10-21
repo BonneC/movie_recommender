@@ -25,12 +25,7 @@ def vectorizer():
 # creates cosine similarity matrices based on keywords from the keyword dataset or genres&director(soup) dataset
 def count_vectorizer():
     cosine_sim = np.load('matrices/final_matrix.npy')
-    # values range from 0 to 2, we scale them from 0 to 1 to have
-    # the same importance as the other cosine similarity matrix
-    scaler = MinMaxScaler()
-    scaler.fit(cosine_sim)
-    cosine_scaled = scaler.transform(cosine_sim)
-    return cosine_scaled
+    return cosine_sim
 
 
 # Function that takes in movie titles, cosine similarity for similarity between movies and
@@ -61,7 +56,6 @@ def keyword_recommender(titles, cosine_sim=vectorizer()):
 
     # Get the scores of the 100 most similar movies
     sim_scores = sim_scores[0:100]
-    print(sim_scores)
 
     # Get the indices of the 100 recommended movies
     movie_indices = [i[0] for i in sim_scores]
@@ -77,12 +71,6 @@ def keyword_recommender(titles, cosine_sim=vectorizer()):
     # (they will have the highest ratings) & we have to remove them
     movies_df = movies_df[~movies_df.index.isin(ids)]
 
-    # movie_indices = list(set(movie_indices) - set(ids))
-    # print('INDICES')
-    # print(movie_indices)
-    # find the recommended movies in the movie database and
-    # return their titles as a list
-    # return movies_db['title'].iloc[movie_indices[:100]].tolist()
     return movies_df
 
 
@@ -94,10 +82,18 @@ def weighted_rating(x, mean=6.3, n_votes=160):
     return (v / (v + n_votes) * R) + (n_votes / (n_votes + v) * mean)
 
 
-def sort_by_rating(movies):
+def set_weighted_rating(movies):
     # movies_db = pd.read_csv('datasets/final_movies.csv')
     movies['score'] = movies.apply(weighted_rating, axis=1)
-    movies = movies.sort_values('score', ascending=False)
+    # movies = movies.sort_values('score', ascending=False)
+    return movies
+
+# sorts movies by sum of weighted ratings score & keyword score
+def summed_rating(movies):
+    scaler = MinMaxScaler(feature_range=(0, 1))
+    movies['score'] = scaler.fit_transform(movies['score'].values.reshape(-1, 1))
+    movies['summed'] = movies['score'] + movies['keyword_scores']
+    movies = movies.sort_values('summed', ascending=False)
     return movies
 
 
@@ -115,8 +111,6 @@ def genre_recommender(user_movies, movies):
     input_movies = movies_db[movies_db['title'].isin(user_movies['title'].tolist())]
     # get onehot values for each movie's genres
     user_onehot = get_onehot(input_movies)
-    print("SHEJP")
-    print(user_onehot.shape)
     # reset the indexes and drop the id, we only need the columns with the genres
     user_onehot.reset_index(drop=True, inplace=True)
     user_onehot = user_onehot.drop(['id'], axis=1)
@@ -135,6 +129,6 @@ def genre_recommender(user_movies, movies):
     # Sort our recommendations in descending order
     final_rec = final_rec.sort_values(ascending=False).head(20)
     # Find the titles of the recommended movies in the movie database
-    final_movies = movies_db.loc[movies_db['id'].isin(final_rec.keys())]
+    final_movies = movies.loc[movies['id'].isin(final_rec.keys())]
     # return top 10 recommended movies
     return final_movies.head(20)
