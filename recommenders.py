@@ -4,6 +4,7 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import linear_kernel
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
+from sklearn.preprocessing import MinMaxScaler
 
 
 # creates cosine similarity matrix based on keywords from the overview dataset
@@ -24,8 +25,12 @@ def vectorizer():
 # creates cosine similarity matrices based on keywords from the keyword dataset or genres&director(soup) dataset
 def count_vectorizer():
     cosine_sim = np.load('matrices/final_matrix.npy')
-
-    return cosine_sim
+    # values range from 0 to 2, we scale them from 0 to 1 to have
+    # the same importance as the other cosine similarity matrix
+    scaler = MinMaxScaler()
+    scaler.fit(cosine_sim)
+    cosine_scaled = scaler.transform(cosine_sim)
+    return cosine_scaled
 
 
 # Function that takes in movie titles, cosine similarity for similarity between movies and
@@ -36,7 +41,7 @@ def keyword_recommender(titles, cosine_sim=vectorizer()):
     movies_db = pd.read_csv('datasets/final_movies.csv')
     # movies_db = movies_db[:4000]
 
-    #cosine_sim = cosine_sim + count_vectorizer()
+    # cosine_sim = cosine_sim + count_vectorizer()
     # we create an array with zeroes and 10k elements
     # each row represents each movie
     final_scores = np.zeros(10000)
@@ -81,17 +86,16 @@ def keyword_recommender(titles, cosine_sim=vectorizer()):
     return movies_df
 
 
-def weighted_rating(x, mean=6.9, n_votes=3000):
+# mean is calculated by mean = movies['vote_average'].mean()
+def weighted_rating(x, mean=6.3, n_votes=160):
     v = x['vote_count']
     R = x['vote_average']
     # Calculation based on the IMDB formula
-    # return (v / (v + N_votes) * R) + (N_votes / (N_votes + v) * mean)
-    return v / ((v+n_votes) * R) + (n_votes/(n_votes+v) * mean)
+    return (v / (v + n_votes) * R) + (n_votes / (n_votes + v) * mean)
 
 
 def sort_by_rating(movies):
-    #movies_db = pd.read_csv('datasets/final_movies.csv')
-    mean = movies['vote_average'].mean()
+    # movies_db = pd.read_csv('datasets/final_movies.csv')
     movies['score'] = movies.apply(weighted_rating, axis=1)
     movies = movies.sort_values('score', ascending=False)
     return movies
@@ -129,8 +133,8 @@ def genre_recommender(user_movies, movies):
     # Multiply the genres by the weights and then take the weighted average
     final_rec = ((movies_onehot * user_profile).sum(axis=1)) / (user_profile.sum())
     # Sort our recommendations in descending order
-    final_rec = final_rec.sort_values(ascending=False).head()
+    final_rec = final_rec.sort_values(ascending=False).head(20)
     # Find the titles of the recommended movies in the movie database
     final_movies = movies_db.loc[movies_db['id'].isin(final_rec.keys())]
     # return top 10 recommended movies
-    return final_movies.head(10)
+    return final_movies.head(20)
