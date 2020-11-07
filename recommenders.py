@@ -28,6 +28,28 @@ def count_vectorizer():
     return cosine_sim
 
 
+# magic
+def group_movies(user_titles):
+    movies_db = pd.read_csv('datasets/final_movies.csv')
+    cosine_sim = np.load('matrices/final_matrix.npy')
+    ids = movies_db.loc[movies_db['title'].isin(user_titles)].index.tolist()
+    similarities = []
+    for id in ids:
+        similarities.append(list(cosine_sim[id]))
+    arr = np.array(similarities)
+    arr2 = []
+    for i in range(len(arr)):
+        arr2.append(arr[i][ids])
+    df = pd.DataFrame()
+    i = 0
+    for id in ids:
+        df[id] = arr2[i]
+        i = i + 1
+
+    correlated = df.corr()
+    return correlated
+
+
 # Function that takes in movie titles, cosine similarity for similarity between movies and
 # the movie database
 # cosine similarity is a 10000x10000 matrix (10k because we have 10k movies in the dataset)
@@ -88,6 +110,7 @@ def set_weighted_rating(movies):
     # movies = movies.sort_values('score', ascending=False)
     return movies
 
+
 # sorts movies by sum of weighted ratings score & keyword score
 def summed_rating(movies):
     scaler = MinMaxScaler(feature_range=(0, 1))
@@ -95,6 +118,13 @@ def summed_rating(movies):
     movies['summed'] = movies['score'] + movies['keyword_scores']
     movies = movies.sort_values('summed', ascending=False)
     return movies
+
+
+def get_titles_with_ids(ids):
+    movies_db = pd.read_csv('datasets/final_movies.csv')
+    movies = movies_db.loc[ids, :]
+    user_titles = movies['title'].tolist()
+    return user_titles
 
 
 def get_onehot(movies):
