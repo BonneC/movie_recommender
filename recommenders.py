@@ -23,6 +23,7 @@ def vectorizer():
 
 
 # creates cosine similarity matrices based on keywords from the keyword dataset or genres&director(soup) dataset
+# is already calculated and stored as a numpy matrix due to high calculation time
 def count_vectorizer():
     cosine_sim = np.load('matrices/final_matrix.npy')
     return cosine_sim
@@ -97,13 +98,16 @@ def keyword_recommender(titles, cosine_sim=vectorizer()):
 
 
 # mean is calculated by mean = movies['vote_average'].mean()
-def weighted_rating(x, mean=6.3, n_votes=160):
-    v = x['vote_count']
-    R = x['vote_average']
-    # Calculation based on the IMDB formula
+# the formula used is IMDB's rating formula (based on the Bayesian average method)
+def weighted_rating(movies, mean=6.3, n_votes=160):
+    v = movies['vote_count']
+    R = movies['vote_average']
+    # calculation based on the IMDB formula
     return (v / (v + n_votes) * R) + (n_votes / (n_votes + v) * mean)
 
 
+# add a column to the given dataframe that contains popularity scores for each movie
+# in that same dataframe
 def set_weighted_rating(movies):
     # movies_db = pd.read_csv('datasets/final_movies.csv')
     movies['score'] = movies.apply(weighted_rating, axis=1)
@@ -111,16 +115,27 @@ def set_weighted_rating(movies):
     return movies
 
 
-# sorts movies by sum of weighted ratings score & keyword score
+# sorts movies by sum of weighted ratings score + keyword score
 def summed_rating(movies):
+    # scaler for the popularity ratings
+    # it changes the popularity values to range from 0 to 1
     scaler = MinMaxScaler(feature_range=(0, 1))
+    # scaler for the keyword scores
+    # changes the values to range from 0 to 3
+    # keyword scores have bigger relevance in this recommendation system,
+    # which is why they have a bigger range
+    scaler2 = MinMaxScaler(feature_range=(0, 3))
     movies['score'] = scaler.fit_transform(movies['score'].values.reshape(-1, 1))
+    movies['keyword_scores'] = scaler2.fit_transform(movies['keyword_scores'].values.reshape(-1, 1))
+    # create a column to contain the final movie score = popularity rating + keyword score
     movies['summed'] = movies['score'] + movies['keyword_scores']
+    # sort by highest value
     movies = movies.sort_values('summed', ascending=False)
     return movies
 
 
-def get_titles_with_ids(ids):
+# takes a list of ids and returns a list of the movie titles for each id
+def get_titles_from_ids(ids):
     movies_db = pd.read_csv('datasets/final_movies.csv')
     movies = movies_db.loc[ids, :]
     user_titles = movies['title'].tolist()
@@ -134,6 +149,9 @@ def get_onehot(movies):
     return onehot_movies
 
 
+# takes the user's movies and a movie dataframe
+# takes into account the user's ratings for their movies
+# returns 20 movies sorted by genre rating
 def genre_recommender(user_movies, movies):
     # read the movies database
     movies_db = pd.read_csv('datasets/final_movies.csv')
